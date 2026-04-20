@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comparador DIAN vs Siesa</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --azul: #185FA5;
+      --azul-oscuro: #0C447C;
+      --azul-claro: #EBF3FB;
+      --rojo: #C00000;
+      --verde: #375623;
+      --verde-claro: #E2EFDA;
+      --gris: #F5F5F5;
+      --gris-borde: #D9D9D9;
+      --texto: #1A1A1A;
+      --texto-suave: #555;
+      --blanco: #FFFFFF;
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #EEF3F8;
+      color: var(--texto);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--azul-oscuro);
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    header h1 { font-size: 1.2rem; font-weight: 600; }
+    header span { font-size: 0.8rem; opacity: 0.75; }
+
+    .contenedor {
+      max-width: 960px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      border: 1px solid var(--gris-borde);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--azul-oscuro);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--azul-claro);
+    }
+
+    .upload-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .upload-zona {
+      border: 2px dashed var(--gris-borde);
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--gris);
+      position: relative;
+    }
+    .upload-zona:hover { border-color: var(--azul); background: var(--azul-claro); }
+    .upload-zona.cargado { border-color: #4CAF50; border-style: solid; background: var(--verde-claro); }
+    .upload-zona input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-zona .icono { font-size: 2rem; margin-bottom: 0.5rem; }
+    .upload-zona .label { font-size: 0.9rem; font-weight: 600; color: var(--texto); }
+    .upload-zona .sub { font-size: 0.75rem; color: var(--texto-suave); margin-top: 4px; }
+    .upload-zona .archivo-nombre { font-size: 0.8rem; color: var(--verde); font-weight: 600; margin-top: 8px; }
+
+    .btn-group { display: flex; gap: 0.75rem; margin-top: 1rem; }
+
+    button {
+      padding: 0.6rem 1.4rem;
+      border-radius: 6px;
+      border: 1px solid var(--gris-borde);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button:hover { opacity: 0.88; transform: translateY(-1px); }
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-primary { background: var(--azul); color: white; border-color: var(--azul); }
+    .btn-success { background: #2E7D32; color: white; border-color: #2E7D32; }
+    .btn-outline { background: white; color: var(--azul); border-color: var(--azul); }
+
+    .metricas {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .metrica {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+      border: 1px solid var(--gris-borde);
+    }
+    .metrica .valor { font-size: 2rem; font-weight: 700; }
+    .metrica .etiqueta { font-size: 0.75rem; color: var(--texto-suave); margin-top: 4px; }
+    .metrica.ok .valor { color: #2E7D32; }
+    .metrica.warn .valor { color: #E65100; }
+    .metrica.danger .valor { color: var(--rojo); }
+    .metrica.info .valor { color: var(--azul); }
+
+    .narrativa {
+      background: var(--azul-claro);
+      border-left: 4px solid var(--azul);
+      border-radius: 0 8px 8px 0;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      white-space: pre-wrap;
+      font-size: 0.875rem;
+      line-height: 1.7;
+      color: var(--texto);
+    }
+
+    .proveedor-card {
+      border: 1px solid var(--gris-borde);
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+    }
+    .proveedor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      background: var(--gris);
+      user-select: none;
+    }
+    .proveedor-header:hover { background: var(--azul-claro); }
+    .proveedor-nombre { font-weight: 600; font-size: 0.9rem; }
+    .proveedor-nit { font-size: 0.75rem; color: var(--texto-suave); }
+    .proveedor-badges { display: flex; gap: 0.5rem; align-items: center; }
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+    .badge-dian { background: #E3F2FD; color: #0D47A1; }
+    .badge-siesa { background: var(--verde-claro); color: var(--verde); }
+    .badge-faltante { background: #FFEBEE; color: var(--rojo); }
+    .badge-ok { background: var(--verde-claro); color: var(--verde); }
+    .chevron { font-size: 0.75rem; color: var(--texto-suave); transition: transform 0.2s; }
+    .chevron.abierto { transform: rotate(180deg); }
+
+    .proveedor-detalle {
+      display: none;
+      padding: 1rem;
+      border-top: 1px solid var(--gris-borde);
+    }
+    .proveedor-detalle.visible { display: block; }
+
+    .facturas-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 0.5rem;
+    }
+    .factura-tag {
+      font-size: 0.75rem;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-weight: 600;
+    }
+    .factura-ok { background: var(--verde-claro); color: var(--verde); }
+    .factura-faltante { background: #FFEBEE; color: var(--rojo); border: 1px solid #FFCDD2; }
+
+    .seccion-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--texto-suave);
+      margin-bottom: 6px;
+      margin-top: 0.75rem;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alerta {
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+    .alerta-error { background: #FFEBEE; color: var(--rojo); border: 1px solid #FFCDD2; }
+    .alerta-ok { background: var(--verde-claro); color: var(--verde); border: 1px solid #C8E6C9; }
+
+    #seccion-resultado { display: none; }
+
+    .barra-completitud {
+      height: 8px;
+      background: var(--gris-borde);
+      border-radius: 4px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .barra-completitud-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.8s ease;
+    }
+
+    @media (max-width: 640px) {
+      .upload-grid { grid-template-columns: 1fr; }
+      .metricas { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📊 Comparador DIAN vs Siesa</h1>
+    <span>Análisis de facturas recibidas — detecta faltantes por proveedor</span>
+  </div>
+</header>
+
+<div class="contenedor">
+
+  <!-- CARGA DE ARCHIVOS -->
+  <div class="card">
+    <h2>1. Cargar archivos</h2>
+    <div class="upload-grid">
+      <div class="upload-zona" id="zona-dian">
+        <input type="file" accept=".xlsx,.xls" id="input-dian" />
+        <div class="icono">🏛️</div>
+        <div class="label">Archivo DIAN</div>
+        <div class="sub">Reporte de documentos emitidos (.xlsx)</div>
+        <div class="archivo-nombre" id="nombre-dian"></div>
+      </div>
+      <div class="upload-zona" id="zona-siesa">
+        <input type="file" accept=".xlsx,.xls" id="input-siesa" />
+        <div class="icono">🗂️</div>
+        <div class="label">Archivo Siesa</div>
+        <div class="sub">Reporte de facturas por proveedor (.xls / .xlsx)</div>
+        <div class="archivo-nombre" id="nombre-siesa"></div>
+      </div>
+    </div>
+
+    <div id="alerta-carga"></div>
+
+    <div class="btn-group">
+      <button class="btn-primary" id="btn-comparar" disabled>
+        Comparar facturas
+      </button>
+      <button class="btn-outline" id="btn-limpiar">Limpiar</button>
+    </div>
+  </div>
+
+  <!-- RESULTADO -->
+  <div id="seccion-resultado">
+
+    <div id="alerta-resultado"></div>
+
+    <!-- Métricas -->
+    <div class="metricas">
+      <div class="metrica info">
+        <div class="valor" id="m-proveedores">—</div>
+        <div class="etiqueta">Proveedores</div>
+      </div>
+      <div class="metrica">
+        <div class="valor" id="m-dian">—</div>
+        <div class="etiqueta">Facturas DIAN</div>
+      </div>
+      <div class="metrica ok">
+        <div class="valor" id="m-siesa">—</div>
+        <div class="etiqueta">En Siesa</div>
+      </div>
+      <div class="metrica danger">
+        <div class="valor" id="m-faltantes">—</div>
+        <div class="etiqueta">Faltantes</div>
+      </div>
+    </div>
+
+    <!-- Barra de completitud -->
+    <div class="card" style="padding: 1rem 1.5rem;">
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:600;">
+        <span>Completitud general</span>
+        <span id="pct-completitud">—</span>
+      </div>
+      <div class="barra-completitud">
+        <div class="barra-completitud-fill" id="barra-fill" style="width:0%; background: var(--azul);"></div>
+      </div>
+    </div>
+
+    <!-- Narrativa IA -->
+    <div class="card">
+      <h2>📝 Informe generado</h2>
+      <div class="narrativa" id="narrativa-texto">—</div>
+      <div class="btn-group" style="margin-top: 1rem;">
+        <button class="btn-success" id="btn-descargar">⬇ Descargar reporte Excel</button>
+      </div>
+    </div>
+
+    <!-- Detalle por proveedor -->
+    <div class="card">
+      <h2>📋 Detalle por proveedor</h2>
+      <div id="lista-proveedores"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const API_URL = window.API_URL || "http://localhost:8000";
+
+  let archivoDian = null;
+  let archivoSiesa = null;
+
+  // ── Manejo de uploads ──
+  function setupUpload(inputId, zonaId, nombreId, setter) {
+    const input = document.getElementById(inputId);
+    const zona = document.getElementById(zonaId);
+    const nombre = document.getElementById(nombreId);
+
+    input.addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      setter(file);
+      nombre.textContent = "✔ " + file.name;
+      zona.classList.add("cargado");
+      validarBotones();
+    });
+  }
+
+  setupUpload("input-dian", "zona-dian", "nombre-dian", f => archivoDian = f);
+  setupUpload("input-siesa", "zona-siesa", "nombre-siesa", f => archivoSiesa = f);
+
+  function validarBotones() {
+    document.getElementById("btn-comparar").disabled = !(archivoDian && archivoSiesa);
+  }
+
+  document.getElementById("btn-limpiar").addEventListener("click", () => {
+    archivoDian = null;
+    archivoSiesa = null;
+    ["dian", "siesa"].forEach(k => {
+      document.getElementById(`input-${k}`).value = "";
+      document.getElementById(`nombre-${k}`).textContent = "";
+      document.getElementById(`zona-${k}`).classList.remove("cargado");
+    });
+    document.getElementById("seccion-resultado").style.display = "none";
+    document.getElementById("alerta-carga").innerHTML = "";
+    validarBotones();
+  });
+
+  // ── Comparar ──
+  document.getElementById("btn-comparar").addEventListener("click", async () => {
+    const btn = document.getElementById("btn-comparar");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Analizando...';
+    document.getElementById("alerta-carga").innerHTML = "";
+
+    const form = new FormData();
+    form.append("dian", archivoDian);
+    form.append("siesa", archivoSiesa);
+
+    try {
+      const res = await fetch(`${API_URL}/comparar`, { method: "POST", body: form });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.detail || "Error desconocido");
+
+      mostrarResultado(data);
+    } catch (err) {
+      document.getElementById("alerta-carga").innerHTML =
+        `<div class="alerta alerta-error">⚠️ ${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = "Comparar facturas";
+    }
+  });
+
+  // ── Mostrar resultado ──
+  function mostrarResultado(data) {
+    const r = data.resumen_general;
+    document.getElementById("seccion-resultado").style.display = "block";
+
+    document.getElementById("m-proveedores").textContent = r.total_proveedores;
+    document.getElementById("m-dian").textContent = r.total_dian.toLocaleString("es-CO");
+    document.getElementById("m-siesa").textContent = r.total_en_siesa.toLocaleString("es-CO");
+    document.getElementById("m-faltantes").textContent = r.total_faltantes.toLocaleString("es-CO");
+    document.getElementById("pct-completitud").textContent = r.porcentaje_completitud + "%";
+
+    const pct = r.porcentaje_completitud;
+    const barra = document.getElementById("barra-fill");
+    barra.style.width = pct + "%";
+    barra.style.background = pct >= 95 ? "#2E7D32" : pct >= 75 ? "#E65100" : "#C00000";
+
+    document.getElementById("narrativa-texto").textContent = data.narrativa || "Sin narrativa generada.";
+
+    const lista = document.getElementById("lista-proveedores");
+    lista.innerHTML = "";
+
+    data.proveedores.forEach((p, i) => {
+      const card = document.createElement("div");
+      card.className = "proveedor-card";
+
+      const badgeFaltante = p.total_faltantes > 0
+        ? `<span class="badge badge-faltante">⚠ ${p.total_faltantes} faltantes</span>`
+        : `<span class="badge badge-ok">✔ Completo</span>`;
+
+      card.innerHTML = `
+        <div class="proveedor-header" onclick="toggleDetalle(${i})">
+          <div>
+            <div class="proveedor-nombre">${p.nombre}</div>
+            <div class="proveedor-nit">NIT: ${p.nit}</div>
+          </div>
+          <div class="proveedor-badges">
+            <span class="badge badge-dian">DIAN: ${p.total_dian}</span>
+            <span class="badge badge-siesa">Siesa: ${p.total_en_siesa}</span>
+            ${badgeFaltante}
+            <span class="chevron" id="chevron-${i}">▼</span>
+          </div>
+        </div>
+        <div class="proveedor-detalle" id="detalle-${i}">
+          ${p.faltantes.length > 0 ? `
+            <div class="seccion-label">❌ Facturas faltantes en Siesa</div>
+            <div class="facturas-grid">
+              ${p.faltantes.map(f => `<span class="factura-tag factura-faltante">${f}</span>`).join("")}
+            </div>
+          ` : ""}
+          ${p.encontradas.length > 0 ? `
+            <div class="seccion-label">✅ Facturas encontradas en Siesa</div>
+            <div class="facturas-grid">
+              ${p.encontradas.map(f => `<span class="factura-tag factura-ok">${f}</span>`).join("")}
+            </div>
+          ` : ""}
+        </div>
+      `;
+
+      // Abrir automáticamente los que tienen faltantes
+      if (p.total_faltantes > 0) {
+        setTimeout(() => {
+          const det = card.querySelector(`#detalle-${i}`);
+          const chev = card.querySelector(`#chevron-${i}`);
+          if (det) det.classList.add("visible");
+          if (chev) chev.classList.add("abierto");
+        }, 100);
+      }
+
+      lista.appendChild(card);
+    });
+
+    document.getElementById("seccion-resultado").scrollIntoView({ behavior: "smooth" });
+  }
+
+  function toggleDetalle(i) {
+    const det = document.getElementById(`detalle-${i}`);
+    const chev = document.getElementById(`chevron-${i}`);
+    det.classList.toggle("visible");
+    chev.classList.toggle("abierto");
+  }
+
+  // ── Descargar reporte ──
+  document.getElementById("btn-descargar").addEventListener("click", async () => {
+    const btn = document.getElementById("btn-descargar");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="border-top-color:white;"></span>Generando Excel...';
+
+    const form = new FormData();
+    form.append("dian", archivoDian);
+    form.append("siesa", archivoSiesa);
+
+    try {
+      const res = await fetch(`${API_URL}/descargar-reporte`, { method: "POST", body: form });
+      if (!res.ok) throw new Error("Error generando el reporte");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "reporte_comparacion_facturas.xlsx";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Error descargando el reporte: " + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = "⬇ Descargar reporte Excel";
+    }
+  });
+</script>
+
+</body>
+</html>
