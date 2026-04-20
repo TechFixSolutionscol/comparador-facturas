@@ -8,7 +8,7 @@ import os
 import io
 import json
 import httpx
-from comparador import comparar_facturas, generar_excel_reporte
+from backend.comparador import comparar_facturas, generar_excel_reporte
 
 app = FastAPI(title="Comparador Facturas DIAN vs Siesa")
 
