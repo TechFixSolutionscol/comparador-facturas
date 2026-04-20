@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 import pandas as pd
 import re
 import os
@@ -18,13 +19,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# index.html vive en la raiz del repo, un nivel arriba de /backend
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+INDEX_PATH = os.path.join(BASE_DIR, "index.html")
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
 
 @app.get("/")
 def root():
-    return {"status": "ok", "mensaje": "Comparador DIAN vs Siesa activo"}
+    return FileResponse(INDEX_PATH)
 
 
 @app.post("/comparar")
