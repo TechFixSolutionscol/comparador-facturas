@@ -66,6 +66,13 @@ def leer_dian(contenido: bytes) -> pd.DataFrame:
     for col in columnas_requeridas:
         if col not in df.columns:
             raise ValueError(f"El archivo DIAN no tiene la columna requerida: '{col}'")
+    
+
+    # 2. Filtrar solo recibidas — sin tocar el valor original
+    df = df[df["Grupo"].astype(str).str.strip().str.lower() == "recibido"]
+
+    if df.empty:
+        raise ValueError("No se encontraron facturas con Grupo = 'Recibido' en el archivo DIAN.")
 
     # Filtrar solo documentos que son facturas reales (excluye acuses, nóminas, etc.)
     TIPOS_FACTURA = [
@@ -77,11 +84,7 @@ def leer_dian(contenido: bytes) -> pd.DataFrame:
         "Nota de ajuste del documento soporte",
     ]
     
-    GRUPO_EMISOR = ["Recibido"]
-    if "Grupo" in df.columns:
-        df = df[df["Grupo"].isin(GRUPO_EMISOR)]
-    else:
-        raise ValueError("El archivo DIAN no tiene la columna requerida: 'Grupo'")
+    
 
     if "Tipo de documento" in df.columns:
         df = df[df["Tipo de documento"].isin(TIPOS_FACTURA)]
