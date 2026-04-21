@@ -76,6 +76,13 @@ def leer_dian(contenido: bytes) -> pd.DataFrame:
         "Documento equivalente POS",
         "Nota de ajuste del documento soporte",
     ]
+    
+    GRUPO_EMISOR = ["Recibido"]
+    if "Grupo" in df.columns:
+        df = df[df["Grupo"].isin(GRUPO_EMISOR)]
+    else:
+        raise ValueError("El archivo DIAN no tiene la columna requerida: 'Grupo'")
+
     if "Tipo de documento" in df.columns:
         df = df[df["Tipo de documento"].isin(TIPOS_FACTURA)]
 
