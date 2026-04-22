@@ -62,7 +62,7 @@ def leer_dian(contenido: bytes) -> pd.DataFrame:
     )
 
     # Validar columnas mínimas
-    columnas_requeridas = ["Folio", "Prefijo", "NIT Emisor", "Nombre Emisor"]
+    columnas_requeridas = ["Folio", "Prefijo", "NIT Emisor", "Nombre Emisor","Fecha Emisión"]
     for col in columnas_requeridas:
         if col not in df.columns:
             raise ValueError(f"El archivo DIAN no tiene la columna requerida: '{col}'")
@@ -90,7 +90,7 @@ def leer_dian(contenido: bytes) -> pd.DataFrame:
         df = df[df["Tipo de documento"].isin(TIPOS_FACTURA)]
 
     df = df[columnas_requeridas].copy()
-    df.columns = ["folio", "prefijo", "nit", "nombre"]
+    df.columns = ["folio", "prefijo", "nit", "nombre","fecha"]  
 
     df["nit"] = df["nit"].apply(normalizar_nit)
 
@@ -186,7 +186,12 @@ def comparar_facturas(dian_bytes: bytes, siesa_bytes: bytes) -> dict:
         if en_siesa:
             proveedores[nit]["encontradas"].append(folio_original)
         else:
-            proveedores[nit]["faltantes"].append(folio_original)
+            proveedores[nit]["faltantes"].append({
+                "factura": folio_original,
+                "fecha": str(row["fecha"]) if pd.notna(row["fecha"]) else "Sin fecha"
+            })
+
+             
 
     # Construir respuesta final
     lista_proveedores = []
@@ -197,7 +202,7 @@ def comparar_facturas(dian_bytes: bytes, siesa_bytes: bytes) -> dict:
             "total_dian": len(datos["facturas_dian"]),
             "total_en_siesa": len(datos["encontradas"]),
             "total_faltantes": len(datos["faltantes"]),
-            "faltantes": sorted(datos["faltantes"]),
+            "faltantes": sorted(datos["faltantes"], key=lambda x: x["fecha"]),
             "encontradas": sorted(datos["encontradas"])
         })
 
