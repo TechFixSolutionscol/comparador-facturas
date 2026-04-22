@@ -127,7 +127,7 @@ def construir_resumen_para_ia(resultado: dict) -> str:
         lineas.append(f"  - Encontradas en Siesa: {p['total_en_siesa']}")
         lineas.append(f"  - Faltantes: {p['total_faltantes']}")
         if p["faltantes"]:
-            lineas.append(f"  - Facturas faltantes: {', '.join(p['faltantes'])}")
+            lineas.append(f"  - Facturas faltantes: {', '.join(f['factura'] for f in p['faltantes'])}")
 
     return "\n".join(lineas)
 
@@ -148,6 +148,6 @@ def generar_narrativa_local(resultado: dict) -> str:
             if p["faltantes"]:
                 lineas.append(f"📌 {p['nombre']} (NIT: {p['nit']})")
                 lineas.append(f"   DIAN: {p['total_dian']} facturas | Siesa: {p['total_en_siesa']} | Faltan: {p['total_faltantes']}")
-                lineas.append(f"   Facturas faltantes: {', '.join(p['faltantes'])}")
+                lineas.append(f"   Facturas faltantes: {', '.join(f['factura'] for f in p['faltantes'])}")
 
     return "\n".join(lineas)

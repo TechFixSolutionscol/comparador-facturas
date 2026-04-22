@@ -343,9 +343,9 @@ def _estilo_detalle(ws, resultado):
             ws.column_dimensions[get_column_letter(col)].width = ancho
         fila += 1
 
-        todas = set(p["encontradas"]) | set(p["faltantes"])
-        for i, factura in enumerate(sorted(todas)):
-            encontrada = factura in p["encontradas"]
+        todas_claves = sorted(list(set(p["encontradas"]) | set(f["factura"] for f in p["faltantes"])))
+        for i, factura_clave in enumerate(todas_claves):
+            encontrada = factura_clave in p["encontradas"]
             color_fila = "E2EFDA" if encontrada else "FCE4D6"
             fill = PatternFill("solid", fgColor=color_fila)
             estado_txt = "✔ Encontrada" if encontrada else "✘ Faltante"
@@ -353,7 +353,7 @@ def _estilo_detalle(ws, resultado):
 
             ws.cell(row=fila, column=1, value=p["nit"]).font = Font(name="Arial", size=9)
             ws.cell(row=fila, column=2, value=p["nombre"]).font = Font(name="Arial", size=9)
-            ws.cell(row=fila, column=3, value=factura).font = Font(name="Arial", size=9)
+            ws.cell(row=fila, column=3, value=factura_clave).font = Font(name="Arial", size=9)
             ws.cell(row=fila, column=4, value="Sí" if encontrada else "No").alignment = Alignment(horizontal="center")
             c_estado = ws.cell(row=fila, column=5, value=estado_txt)
             c_estado.font = Font(name="Arial", size=9, bold=True, color=color_estado)
@@ -385,10 +385,10 @@ def _estilo_faltantes(ws, resultado):
 
     i = 0
     for p in resultado["proveedores"]:
-        for factura in sorted(p["faltantes"]):
+        for f_obj in p["faltantes"]:
             color_fila = "FCE4D6" if i % 2 == 0 else "FFFFFF"
             fill = PatternFill("solid", fgColor=color_fila)
-            valores = [p["nit"], p["nombre"], factura, factura]
+            valores = [p["nit"], p["nombre"], f_obj["factura"], f_obj["factura"]]
             for col, val in enumerate(valores, start=1):
                 c = ws.cell(row=fila, column=col, value=val)
                 c.font = Font(name="Arial", size=9)
