@@ -30,7 +30,27 @@
       </div>
     </div>
     <button class="btn btn-cyan btn-login" id="btn-login-submit">INGRESAR AL SISTEMA</button>
+    <div style="text-align:center; margin-top:15px;">
+      <a href="#" id="link-forgot-password" style="color:var(--text-dim); font-size:0.6rem; text-decoration:none; font-family:var(--mono);">¿OLVIDASTE TU CONTRASEÑA?</a>
+    </div>
     <div id="login-error" style="color:var(--red); font-size:0.6rem; font-family:var(--mono); margin-top:10px; text-align:center;"></div>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD OVERLAY -->
+<div id="forgot-overlay" style="display:none;" class="overlay">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="brand-label">RECUPERAR ACCESO</div>
+    </div>
+    <p style="color:var(--text-mid); font-size:0.6rem; font-family:var(--mono); margin-bottom:1rem;">Ingresa tu correo institucional para recibir un enlace de recuperación.</p>
+    <div class="login-input-group">
+      <label>CORREO ELECTRÓNICO</label>
+      <input type="email" id="forgot-email" class="login-input" placeholder="usuario@empresa.com" />
+    </div>
+    <button class="btn btn-cyan btn-login" id="btn-forgot-submit">ENVIAR ENLACE</button>
+    <button class="btn btn-outline" id="btn-forgot-back" style="width:100%; margin-top:10px; font-size:0.65rem;">VOLVER AL LOGIN</button>
+    <div id="forgot-msg" style="font-size:0.6rem; font-family:var(--mono); margin-top:10px; text-align:center;"></div>
   </div>
 </div>
 
@@ -74,13 +94,12 @@
   <div class="topbar">
     <span class="topbar-title">TABLERO DE CONTROL</span>
     <div style="display:flex; align-items:center; gap:2rem;">
-      <div id="user-display" style="font-family:var(--mono); font-size:0.6rem; color:var(--cyan); letter-spacing:0.1em; display:none;">
-        USER_ID // <span id="user-name">...</span>
+      <div id="user-display" style="font-family:var(--mono); font-size:0.6rem; color:var(--cyan); letter-spacing:0.1em; display:none; align-items:center; gap:0.5rem;">
+        <span class="status-badge" id="user-role-badge" style="font-size:0.5rem; padding:2px 6px;">ROLE</span>
+        <span id="user-name">...</span>
       </div>
       <div class="topbar-icons">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" id="nav-profile-btn" style="cursor:pointer;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
       </div>
     </div>
   </div>
@@ -254,41 +273,103 @@
     </div>
   </div>
     
-    <!-- VIEW: USERS (New) -->
+    <!-- VIEW: USERS (Expanded) -->
     <div id="view-users" style="display:none;">
       <div class="page-title">GESTIÓN DE ACCESOS</div>
-      <div class="page-sub">Creación y administración de usuarios del sistema.</div>
+      <div class="page-sub">Administre los usuarios y sus niveles de permiso.</div>
       
-      <div class="grid-main" style="grid-template-columns: 1fr 1fr;">
+      <div class="grid-main" style="grid-template-columns: 320px 1fr;">
         <div class="panel">
-          <div class="panel-header"><div class="panel-title">REGISTRAR NUEVO USUARIO</div></div>
+          <div class="panel-header"><div class="panel-title">REGISTRAR NUEVO</div></div>
           <div class="panel-body">
             <div class="login-input-group">
-              <label>NOMBRE DEL COLABORADOR</label>
-              <input type="text" id="new-user-name" class="login-input" placeholder="Ej: Juan Pérez" />
+              <label>NOMBRE COMPLETO</label>
+              <input type="text" id="new-user-name" class="login-input" />
             </div>
             <div class="login-input-group">
-              <label>CORREO ELECTRÓNICO (INSTITUCIONAL)</label>
-              <input type="email" id="new-user-email" class="login-input" placeholder="usuario@empresa.com" />
+              <label>CORREO INSTITUCIONAL</label>
+              <input type="email" id="new-user-email" class="login-input" />
+            </div>
+            <div class="login-input-group">
+              <label>ROL ASIGNADO</label>
+              <select id="new-user-role" class="login-input" style="appearance:none; background-image:url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%235a6480%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E'); background-repeat:no-repeat; background-position:right 10px center; background-size:16px;">
+                <option value="Operador">Operador</option>
+                <option value="Admin">Administrador</option>
+                <option value="Lectura">Solo Lectura</option>
+              </select>
             </div>
             <div id="new-user-msg" style="font-size:0.6rem; font-family:var(--mono); margin-bottom:1rem;"></div>
-            <button class="btn btn-cyan" id="btn-create-user" style="width:100%; justify-content:center;">
-              ENVIAR INVITACIÓN POR CORREO
-            </button>
+            <button class="btn btn-cyan" id="btn-create-user" style="width:100%; justify-content:center;">ENVIAR INVITACIÓN</button>
           </div>
         </div>
 
         <div class="panel">
-          <div class="panel-header"><div class="panel-title">INFORMACIÓN DE SEGURIDAD</div></div>
-          <div class="panel-body">
-            <div class="narrativa-box" style="border-left-color: var(--yellow);">
-              [SISTEMA DE INVITACIÓN SEGURA]<br><br>
-              Al hacer clic en enviar, el sistema:<br>
-              1. Registrará al usuario con estado 'PENDIENTE'.<br>
-              2. Generará un token de seguridad único.<br>
-              3. Enviará un correo con un link para que el usuario defina su propia contraseña.<br><br>
-              Esto garantiza que el administrador nunca conozca la contraseña del usuario.
+          <div class="panel-header">
+            <div class="panel-title">USUARIOS REGISTRADOS</div>
+            <div id="users-count" style="font-size:0.6rem; color:var(--text-dim);">... registros</div>
+          </div>
+          <div class="panel-body" style="padding:0;">
+            <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; font-family:var(--mono); font-size:0.65rem;">
+                <thead>
+                  <tr style="border-bottom:1px solid var(--border); background:rgba(255,255,255,0.02);">
+                    <th style="padding:10px; text-align:left; color:var(--text-dim);">USUARIO / CORREO</th>
+                    <th style="padding:10px; text-align:center; color:var(--text-dim);">ROL</th>
+                    <th style="padding:10px; text-align:center; color:var(--text-dim);">ESTADO</th>
+                    <th style="padding:10px; text-align:center; color:var(--text-dim);">ÚLTIMO ACCESO</th>
+                    <th style="padding:10px; text-align:right; color:var(--text-dim);">ACCIONES</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body">
+                  <!-- Datos dinámicos -->
+                </tbody>
+              </table>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: PROFILE (New) -->
+    <div id="view-profile" style="display:none;">
+      <div class="page-title">MI PERFIL DE USUARIO</div>
+      <div class="page-sub">Gestione sus datos personales y preferencias de seguridad.</div>
+      
+      <div class="grid-main" style="grid-template-columns: 1fr 1fr;">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">DATOS PERSONALES</div></div>
+          <div class="panel-body">
+            <div class="login-input-group">
+              <label>NOMBRE COMPLETO</label>
+              <input type="text" id="profile-name" class="login-input" />
+            </div>
+            <div class="login-input-group">
+              <label>CORREO ELECTRÓNICO</label>
+              <input type="text" id="profile-email" class="login-input" disabled style="opacity:0.5;" />
+            </div>
+            <button class="btn btn-cyan" id="btn-update-profile" style="width:100%; justify-content:center;">GUARDAR CAMBIOS</button>
+            <div id="profile-msg" style="font-size:0.6rem; font-family:var(--mono); margin-top:10px; text-align:center;"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">SEGURIDAD (CAMBIAR CONTRASEÑA)</div></div>
+          <div class="panel-body">
+            <div class="login-input-group">
+              <label>CONTRASEÑA ACTUAL</label>
+              <input type="password" id="pass-old" class="login-input" />
+            </div>
+            <div class="login-input-group">
+              <label>NUEVA CONTRASEÑA</label>
+              <input type="password" id="pass-new" class="login-input" />
+            </div>
+            <div class="login-input-group">
+              <label>CONFIRMAR NUEVA</label>
+              <input type="password" id="pass-confirm" class="login-input" />
+            </div>
+            <p style="font-size:0.55rem; color:var(--text-dim); margin-bottom:1rem;">Mínimo 8 caracteres, incluye una mayúscula y un número.</p>
+            <button class="btn btn-outline" id="btn-update-pass" style="width:100%; justify-content:center; color:var(--cyan); border-color:var(--cyan);">ACTUALIZAR CONTRASEÑA</button>
+            <div id="pass-msg" style="font-size:0.6rem; font-family:var(--mono); margin-top:10px; text-align:center;"></div>
           </div>
         </div>
       </div>

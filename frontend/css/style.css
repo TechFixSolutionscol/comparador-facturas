@@ -217,3 +217,77 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); disp
 @keyframes l14{ 
   100%{transform: rotate(1turn)}
 }
+
+/* --- NUEVOS ESTILOS GESTIÓN USUARIOS --- */
+
+/* OVERLAYS */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 13, 20, 0.95);
+  backdrop-filter: blur(10px);
+  z-index: 2100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* STATUS BADGES */
+.status-badge.active { background: rgba(0, 229, 255, 0.1); color: var(--cyan); border-color: var(--cyan); }
+.status-badge.pending { background: rgba(255, 215, 64, 0.1); color: var(--yellow); border-color: var(--yellow); }
+.status-badge.archived { background: rgba(255, 255, 255, 0.05); color: var(--text-dim); border-color: var(--border); }
+
+/* TABLES ADMIN */
+#users-table-body tr {
+  border-bottom: 1px solid rgba(42, 48, 80, 0.5);
+  transition: background 0.2s;
+}
+#users-table-body tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+#users-table-body td {
+  padding: 12px 10px;
+  vertical-align: middle;
+}
+
+/* ACTIONS */
+.action-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.action-btn:hover {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  background: rgba(0, 229, 255, 0.1);
+}
+.action-btn.danger:hover {
+  color: var(--red);
+  border-color: var(--red);
+  background: rgba(255, 77, 77, 0.1);
+}
+.action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* SELECTS */
+select.login-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%235a6480%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+  padding-right: 35px;
+}
+select.login-input option {
+  background: var(--panel);
+  color: var(--text);
+}
