@@ -316,15 +316,39 @@ document.getElementById("btn-update-pass").addEventListener("click", async () =>
 });
 
 /* --- COMPARADOR & HISTÓRICO --- */
-async function sincronizarConGAS(resumen) {
+let lastSummaryData = null;
+
+async function sincronizarConGAS(resumen, force = false) {
   log("Sincronizando con Google Sheets...", 'msg');
+  if (force) resumen.force = true;
+  lastSummaryData = resumen;
+
   const res = await callGASRobust("saveSummary", resumen);
+  
   if (res.success) {
+    if (res.warning) {
+      log("ADVERTENCIA: Ya existe un registro para hoy.", 'warn');
+      document.getElementById("warning-overlay").style.display = "flex";
+      return;
+    }
     log("Sincronización exitosa.", 'ok');
   } else {
     log("Fallo al sincronizar: " + res.error, 'err');
   }
 }
+
+// Botones de advertencia
+document.getElementById("btn-warning-force").addEventListener("click", () => {
+  document.getElementById("warning-overlay").style.display = "none";
+  if (lastSummaryData) {
+    sincronizarConGAS(lastSummaryData, true);
+  }
+});
+
+document.getElementById("btn-warning-cancel").addEventListener("click", () => {
+  document.getElementById("warning-overlay").style.display = "none";
+  log("Guardado cancelado por el usuario.", 'msg');
+});
 
 async function cargarStats() {
   log("Solicitando datos históricos a GAS...", 'msg');

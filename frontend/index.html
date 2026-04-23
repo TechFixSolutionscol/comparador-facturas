@@ -54,6 +54,24 @@
   </div>
 </div>
 
+<!-- DUPLICATE WARNING OVERLAY -->
+<div id="warning-overlay" style="display:none;" class="overlay">
+  <div class="login-card" style="border-color: var(--yellow); max-width: 400px;">
+    <div class="login-header">
+      <div class="brand-label" style="color: var(--yellow);">⚠ ADVERTENCIA DE DUPLICADO</div>
+    </div>
+    <div id="warning-content" style="color:var(--text); font-size:0.75rem; margin-bottom:1.5rem; line-height:1.6;">
+      Ya existen registros guardados para la fecha de hoy. <br><br>
+      Continuar guardará una nueva entrada en el historial, lo cual podría duplicar los datos en el tablero de control. <br><br>
+      <strong>¿Desea guardar de todos modos?</strong>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-cyan" id="btn-warning-force" style="flex:1; justify-content:center; background:var(--yellow); color:#000; border-color:var(--yellow);">✅ CONTINUAR</button>
+      <button class="btn btn-outline" id="btn-warning-cancel" style="flex:1; justify-content:center;">❌ CANCELAR</button>
+    </div>
+  </div>
+</div>
+
 <aside class="sidebar">
   <div class="sidebar-brand">
     <div class="brand-label">COMPARADOR DIAN VS SIESA</div>

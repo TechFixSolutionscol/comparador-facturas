@@ -458,10 +458,33 @@ function resetPassword(token, newPass) {
 function saveSummary(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName("Historial");
+  const values = sheet.getDataRange().getValues();
   const now = new Date();
+  const todayStr = Utilities.formatDate(now, "GMT-5", "yyyy-MM-dd");
+  
+  // Buscar duplicados por fecha (Columna A)
+  let duplicates = 0;
+  for (let i = 1; i < values.length; i++) {
+    const rowDate = values[i][0];
+    if (rowDate instanceof Date) {
+      const rowDateStr = Utilities.formatDate(rowDate, "GMT-5", "yyyy-MM-dd");
+      if (rowDateStr === todayStr) duplicates++;
+    }
+  }
+
+  // Si hay duplicados y no viene forzado, advertir
+  if (duplicates > 0 && !data.force) {
+    return {
+      success: true,
+      warning: true,
+      message: "Ya existen registros con esta fecha.",
+      duplicates: duplicates
+    };
+  }
+
   const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   sheet.appendRow([now, meses[now.getMonth()], now.getFullYear(), data.total_dian, data.total_en_siesa, data.total_faltantes, data.porcentaje_completitud]);
-  return "Resumen guardado";
+  return { success: true, message: "Resumen guardado correctamente" };
 }
 
 /**
