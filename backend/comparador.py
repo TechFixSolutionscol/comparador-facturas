@@ -2,6 +2,8 @@ import pandas as pd
 import re
 import io
 import os
+import uuid
+import tempfile
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -42,9 +44,21 @@ def normalizar_clave(prefijo: str, folio: str) -> str:
 
 
 def normalizar_nit(nit) -> str:
+    """
+    Normaliza un NIT eliminando el dígito de verificación si viene presente.
+    Ejemplos:
+      "900123456-7"      → "900123456"
+      "900.123.456-7"    → "900123456"
+      "900123456"        → "900123456"
+    Esto unifica el formato entre DIAN (suele traer DV) y Siesa (suele no traerlo).
+    """
     if pd.isna(nit):
         return ""
-    return re.sub(r"[^0-9]", "", str(nit)).strip()
+    s = str(nit).strip()
+    # Descartar el dígito de verificación cuando aparece como "-D" al final
+    s = re.sub(r"-\s*\d\s*$", "", s)
+    # Eliminar cualquier otro carácter no numérico (puntos, espacios, etc.)
+    return re.sub(r"[^0-9]", "", s).strip()
 
 
 # ──────────────────────────────────────────────
@@ -62,7 +76,7 @@ def leer_dian(contenido: bytes) -> pd.DataFrame:
     )
 
     # Validar columnas mínimas
-    columnas_requeridas = ["Folio", "Prefijo", "NIT Emisor", "Nombre Emisor","Fecha Emisión"]
+    columnas_requeridas = ["Folio", "Prefijo", "NIT Emisor", "Nombre Emisor", "Fecha Emisión", "Grupo"]
     for col in columnas_requeridas:
         if col not in df.columns:
             raise ValueError(f"El archivo DIAN no tiene la columna requerida: '{col}'")
@@ -90,7 +104,7 @@ def leer_dian(contenido: bytes) -> pd.DataFrame:
         df = df[df["Tipo de documento"].isin(TIPOS_FACTURA)]
 
     df = df[columnas_requeridas].copy()
-    df.columns = ["folio", "prefijo", "nit", "nombre","fecha"]  
+    df.columns = ["folio", "prefijo", "nit", "nombre", "fecha", "grupo"]
 
     df["nit"] = df["nit"].apply(normalizar_nit)
 
@@ -158,9 +172,9 @@ def comparar_facturas(dian_bytes: bytes, siesa_bytes: bytes) -> dict:
     df_siesa = leer_siesa(siesa_bytes)
 
     # Índice de Siesa: (nit, clave) → True
+    # Se exige coincidencia estricta por NIT + clave para evitar falsos positivos
+    # entre proveedores distintos que compartan la misma clave normalizada.
     siesa_index = set(zip(df_siesa["nit"], df_siesa["clave"]))
-    # También indexar solo por clave (por si el NIT viene diferente)
-    siesa_claves = set(df_siesa["clave"])
 
     proveedores = {}
     for _, row in df_dian.iterrows():
@@ -180,8 +194,8 @@ def comparar_facturas(dian_bytes: bytes, siesa_bytes: bytes) -> dict:
 
         proveedores[nit]["facturas_dian"].append(folio_original)
 
-        # Cruce: primero por NIT+clave, luego solo por clave
-        en_siesa = (nit, clave) in siesa_index or clave in siesa_claves
+        # Cruce estricto por NIT + clave (evita falsos positivos cruzando proveedores)
+        en_siesa = (nit, clave) in siesa_index
 
         if en_siesa:
             proveedores[nit]["encontradas"].append(folio_original)
@@ -243,7 +257,7 @@ def generar_excel_reporte(resultado: dict) -> str:
     ws_faltantes = wb.create_sheet("Facturas Faltantes")
     _estilo_faltantes(ws_faltantes, resultado)
 
-    ruta = "/tmp/reporte_comparacion_facturas.xlsx"
+    ruta = os.path.join(tempfile.gettempdir(), f"reporte_comparacion_facturas_{uuid.uuid4().hex}.xlsx")
     wb.save(ruta)
     return ruta
 

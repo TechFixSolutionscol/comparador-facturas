@@ -174,9 +174,12 @@ async function loadUsersTable() {
       const lastLogin = u.lastLogin ? new Date(u.lastLogin).toLocaleString() : "NUNCA";
       const statusCls = u.status === 'active' ? 'active' : (u.status === 'pending' ? 'pending' : 'archived');
       
+      const safeNameHtml = u.name ? u.name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : "";
+      const safeNameJS = u.name ? u.name.replace(/'/g, "\\'").replace(/"/g, "&quot;") : "";
+
       row.innerHTML = `
         <td>
-          <div style="font-weight:700; color:var(--text);">${u.name}</div>
+          <div style="font-weight:700; color:var(--text);">${safeNameHtml}</div>
           <div style="font-size:0.55rem; color:var(--text-dim);">${u.email}</div>
         </td>
         <td style="text-align:center;">
@@ -195,7 +198,7 @@ async function loadUsersTable() {
             <button class="action-btn" title="Alternar Estado" onclick="toggleUserStatus('${u.id}', '${u.status}')">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
             </button>
-            <button class="action-btn danger" title="Eliminar" onclick="confirmDeleteUser('${u.id}', '${u.name}')">
+            <button class="action-btn danger" title="Eliminar" onclick="confirmDeleteUser('${u.id}', '${safeNameJS}')">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
             </button>
           </div>
@@ -209,7 +212,10 @@ async function loadUsersTable() {
 window.updateUserRole = async (id, role) => {
   log(`Actualizando rol de usuario: ${id} -> ${role}`, 'msg');
   const res = await callGASRobust("updateUser", { id, role });
-  if (res.success) log("Rol actualizado.", 'ok');
+  if (res.success) {
+    log("Rol actualizado.", 'ok');
+    loadUsersTable();
+  }
 };
 
 window.toggleUserStatus = async (id, currentStatus) => {
@@ -326,7 +332,7 @@ async function sincronizarConGAS(resumen, force = false) {
   const res = await callGASRobust("saveSummary", resumen);
   
   if (res.success) {
-    if (res.warning) {
+    if (res.data && res.data.warning) {
       log("ADVERTENCIA: Ya existe un registro para hoy.", 'warn');
       document.getElementById("warning-overlay").style.display = "flex";
       return;
@@ -473,6 +479,10 @@ document.getElementById("btn-comparar").addEventListener("click", async () => {
 });
 
 document.getElementById("btn-descargar").addEventListener("click", async () => {
+  if (!archivoDian || !archivoSiesa) {
+    log("Debe cargar ambos archivos antes de exportar el Excel.", 'err');
+    return;
+  }
   const btn = document.getElementById("btn-descargar");
   btn.disabled = true;
   btn.innerHTML = '<div class="btn-loader"></div> GENERANDO...';
@@ -481,6 +491,10 @@ document.getElementById("btn-descargar").addEventListener("click", async () => {
     form.append("dian", archivoDian);
     form.append("siesa", archivoSiesa);
     const res = await fetch(`${API_URL}/descargar-reporte`, { method:"POST", body:form });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || "Error desconocido al generar reporte");
+    }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -567,5 +581,10 @@ function mostrarResultado(data) {
 window.toggleDetalle = (i) => {
   document.getElementById(`detalle-${i}`).classList.toggle("visible");
   document.getElementById(`chevron-${i}`).classList.toggle("abierto");
+};
+
+window.togglePassword = (id) => {
+  const el = document.getElementById(id);
+  if (el) el.type = el.type === 'password' ? 'text' : 'password';
 };
 

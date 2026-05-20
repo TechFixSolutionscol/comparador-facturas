@@ -58,7 +58,7 @@ function initDB() {
       "admin_01", 
       "Admin Sistema", 
       "hader189@gmail.com", 
-      "PuYRxl+rpz8XbqI8EfaG91sHCYAlEQkPYcxT7HF6UjA=", // Hash de Excol123**
+      "PuYRxl+rpz8XbqI8EfaG91sHCYAlEQkPYcxT7HF6UjA=", 
       "active",
       "",
       "",
@@ -117,7 +117,8 @@ function handleLogin(data) {
 
       if (dbPass === inputHash) {
         // Login Exitoso: Resetear intentos y actualizar último acceso
-        sheet.getRange(i + 1, 9, 1, 4).setValues([[new Date(), "", 0, ""]]);
+        sheet.getRange(i + 1, 9).setValue(new Date());
+        sheet.getRange(i + 1, 11, 1, 2).setValues([[0, ""]]);
         
         return {
           id: values[i][0],
@@ -190,7 +191,7 @@ function sendInvitationEmail(name, email, token) {
     <div style="font-family: sans-serif; padding: 20px; border: 1px solid #2a3050; background-color: #0f1117; color: #c8d0e0;">
       <h2 style="color: #00e5ff;">Bienvenido al Sistema</h2>
       <p>Hola <strong>${name}</strong>, se ha creado una cuenta para ti en el <strong>Comparador de Facturas</strong>.</p>
-      <p>Haz clic abajo para configurar tu contraseña (válido por 24 horas):</p>
+      <p>Haz clic abajo para configurar tu contraseña (válido por 48 horas):</p>
       <a href="${invitationLink}" style="display: inline-block; padding: 12px 24px; background-color: #00e5ff; color: #0a0e1a; text-decoration: none; border-radius: 4px; font-weight: bold;">CONFIGURAR MI CONTRASEÑA</a>
       <hr style="border-color: #2a3050; margin: 24px 0;">
       <p>Una vez activada tu cuenta, podrás ingresar al sistema en:</p>
@@ -280,7 +281,14 @@ function doGet(e) {
           const action = ${isRecovery ? "'resetPassword'" : "'setPassword'"} ;
           const successMsg = ${isRecovery ? "'¡CONTRASEÑA RESTABLECIDA!'" : "'¡CUENTA ACTIVADA!'"};
 
-          google.script.run.withSuccessHandler((res) => {
+          google.script.run
+            .withFailureHandler((err) => {
+               msg.style.color = "#ff5252";
+               msg.innerText = err.message || "ERROR EN EL PROCESO";
+               btn.disabled = false;
+               btn.innerText = "REINTENTAR";
+            })
+            .withSuccessHandler((res) => {
             if(res && res.success === false) {
                msg.style.color = "#ff5252";
                msg.innerText = res.error || "ERROR EN EL PROCESO";
@@ -297,6 +305,9 @@ function doGet(e) {
 }
 
 function setPassword(token, password) {
+  if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+    throw new Error("LA CONTRASEÑA NO CUMPLE LOS REQUISITOS DE SEGURIDAD");
+  }
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName("Usuarios");
   const data = sheet.getDataRange().getValues();
@@ -308,7 +319,7 @@ function setPassword(token, password) {
       return true;
     }
   }
-  return false;
+  throw new Error("TOKEN INVÁLIDO");
 }
 
 /**
@@ -377,6 +388,9 @@ function updateProfile(data) {
 }
 
 function changePassword(data) {
+  if (!data.newPass || data.newPass.length < 8 || !/[A-Z]/.test(data.newPass) || !/[0-9]/.test(data.newPass)) {
+    throw new Error("LA NUEVA CONTRASEÑA NO CUMPLE LOS REQUISITOS DE SEGURIDAD");
+  }
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName("Usuarios");
   const values = sheet.getDataRange().getValues();
@@ -434,6 +448,9 @@ function sendRecoveryEmail(name, email, token) {
 }
 
 function resetPassword(token, newPass) {
+  if (!newPass || newPass.length < 8 || !/[A-Z]/.test(newPass) || !/[0-9]/.test(newPass)) {
+    throw new Error("LA NUEVA CONTRASEÑA NO CUMPLE LOS REQUISITOS DE SEGURIDAD");
+  }
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName("Usuarios");
   const values = sheet.getDataRange().getValues();
@@ -443,9 +460,9 @@ function resetPassword(token, newPass) {
       if (new Date().getTime() > values[i][13]) throw new Error("EL TOKEN HA EXPIRADO.");
       
       const newHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, newPass));
-      // Actualizar pass y limpiar recovery tokens
+      // Actualizar pass, limpiar recovery tokens y limpiar bloqueos (intentos_fallidos y bloqueado_hasta)
       sheet.getRange(i + 1, 4).setValue(newHash);
-      sheet.getRange(i + 1, 13, 1, 2).setValues([["", ""]]);
+      sheet.getRange(i + 1, 11, 1, 4).setValues([[0, "", "", ""]]);
       return { success: true };
     }
   }
