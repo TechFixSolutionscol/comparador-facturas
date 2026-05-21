@@ -17,6 +17,7 @@ async function callGASRobust(action, data = {}) {
     try {
       const json = JSON.parse(text);
       if (json.success === false) throw new Error(json.error || "Error en el servidor");
+      if (json.data && json.data.success === false) throw new Error(json.data.error || "Error en el servidor");
       return json;
     } catch (e) {
       console.error("No se pudo parsear JSON de GAS:", text);
@@ -173,37 +174,69 @@ async function loadUsersTable() {
       const row = document.createElement("tr");
       const lastLogin = u.lastLogin ? new Date(u.lastLogin).toLocaleString() : "NUNCA";
       const statusCls = u.status === 'active' ? 'active' : (u.status === 'pending' ? 'pending' : 'archived');
-      
-      const safeNameHtml = u.name ? u.name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : "";
-      const safeNameJS = u.name ? u.name.replace(/'/g, "\\'").replace(/"/g, "&quot;") : "";
 
-      row.innerHTML = `
-        <td>
-          <div style="font-weight:700; color:var(--text);">${safeNameHtml}</div>
-          <div style="font-size:0.55rem; color:var(--text-dim);">${u.email}</div>
-        </td>
-        <td style="text-align:center;">
-          <select class="login-input" style="font-size:0.55rem; padding:2px 4px; width:auto;" onchange="updateUserRole('${u.id}', this.value)">
-            <option value="Operador" ${u.role === 'Operador' ? 'selected' : ''}>OPERADOR</option>
-            <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>ADMIN</option>
-            <option value="Lectura" ${u.role === 'Lectura' ? 'selected' : ''}>LECTURA</option>
-          </select>
-        </td>
-        <td style="text-align:center;">
-          <span class="status-badge ${statusCls}">${u.status}</span>
-        </td>
-        <td style="text-align:center; color:var(--text-dim); font-size:0.55rem;">${lastLogin}</td>
-        <td style="text-align:right;">
-          <div style="display:flex; gap:5px; justify-content:flex-end;">
-            <button class="action-btn" title="Alternar Estado" onclick="toggleUserStatus('${u.id}', '${u.status}')">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
-            </button>
-            <button class="action-btn danger" title="Eliminar" onclick="confirmDeleteUser('${u.id}', '${safeNameJS}')">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-            </button>
-          </div>
-        </td>
-      `;
+      const tdUser = document.createElement("td");
+      const nameDiv = document.createElement("div");
+      nameDiv.style.cssText = "font-weight:700; color:var(--text);";
+      nameDiv.textContent = escapeHtml(u.name);
+      const emailDiv = document.createElement("div");
+      emailDiv.style.cssText = "font-size:0.55rem; color:var(--text-dim);";
+      emailDiv.textContent = escapeHtml(u.email);
+      tdUser.appendChild(nameDiv);
+      tdUser.appendChild(emailDiv);
+
+      const tdRole = document.createElement("td");
+      tdRole.style.textAlign = "center";
+      const roleSelect = document.createElement("select");
+      roleSelect.className = "login-input";
+      roleSelect.style.cssText = "font-size:0.55rem; padding:2px 4px; width:auto;";
+      ["Operador", "Admin", "Lectura"].forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r;
+        opt.textContent = r.toUpperCase();
+        if (u.role === r) opt.selected = true;
+        roleSelect.appendChild(opt);
+      });
+      roleSelect.addEventListener("change", () => updateUserRole(u.id, roleSelect.value));
+      tdRole.appendChild(roleSelect);
+
+      const tdStatus = document.createElement("td");
+      tdStatus.style.textAlign = "center";
+      const statusSpan = document.createElement("span");
+      statusSpan.className = "status-badge " + statusCls;
+      statusSpan.textContent = u.status;
+      tdStatus.appendChild(statusSpan);
+
+      const tdLast = document.createElement("td");
+      tdLast.style.cssText = "text-align:center; color:var(--text-dim); font-size:0.55rem;";
+      tdLast.textContent = lastLogin;
+
+      const tdActions = document.createElement("td");
+      tdActions.style.textAlign = "right";
+      const actionsDiv = document.createElement("div");
+      actionsDiv.style.cssText = "display:flex; gap:5px; justify-content:flex-end;";
+
+      const btnToggle = document.createElement("button");
+      btnToggle.className = "action-btn";
+      btnToggle.title = "Alternar Estado";
+      btnToggle.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>';
+      btnToggle.addEventListener("click", () => toggleUserStatus(u.id, u.status));
+
+      const btnDelete = document.createElement("button");
+      btnDelete.className = "action-btn danger";
+      btnDelete.title = "Eliminar";
+      btnDelete.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>';
+      btnDelete.addEventListener("click", () => confirmDeleteUser(u.id, u.name));
+
+      actionsDiv.appendChild(btnToggle);
+      actionsDiv.appendChild(btnDelete);
+      tdActions.appendChild(actionsDiv);
+
+      row.appendChild(tdUser);
+      row.appendChild(tdRole);
+      row.appendChild(tdStatus);
+      row.appendChild(tdLast);
+      row.appendChild(tdActions);
       tbody.appendChild(row);
     });
   }
@@ -543,6 +576,11 @@ function setBadge(txt, cls) {
   if (b) { b.textContent = txt; b.className = "status-badge " + cls; }
 }
 
+function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function mostrarResultado(data) {
   const r = data.resumen_general;
   document.getElementById("seccion-resultado").style.display = "block";
@@ -560,20 +598,90 @@ function mostrarResultado(data) {
   data.proveedores.forEach((p, i) => {
     const card = document.createElement("div");
     card.className = "proveedor-card";
-    card.innerHTML = `
-      <div class="proveedor-header" onclick="toggleDetalle(${i})">
-        <div><div class="proveedor-nombre">${p.nombre}</div><div class="proveedor-nit">NIT: ${p.nit}</div></div>
-        <div class="proveedor-badges">
-          <span class="badge badge-dian">DIAN: ${p.total_dian}</span>
-          <span class="badge badge-siesa">SIESA: ${p.total_en_siesa}</span>
-          <span class="badge ${p.total_faltantes > 0 ? 'badge-faltante' : 'badge-ok'}">${p.total_faltantes > 0 ? '⚠ '+p.total_faltantes+' FALTANTES' : '✔ COMPLETO'}</span>
-          <span class="chevron" id="chevron-${i}">▼</span>
-        </div>
-      </div>
-      <div class="proveedor-detalle" id="detalle-${i}">
-        ${p.faltantes.length > 0 ? `<div class="seccion-label">// FALTANTES</div><div class="facturas-grid">${p.faltantes.map(f=>`<span class="factura-tag factura-faltante">${f.factura}<span class="factura-fecha">${f.fecha}</span></span>`).join("")}</div>` : ""}
-        ${p.encontradas.length > 0 ? `<div class="seccion-label">// ENCONTRADAS</div><div class="facturas-grid">${p.encontradas.map(f=>`<span class="factura-tag factura-ok">${f}</span>`).join("")}</div>` : ""}
-      </div>`;
+
+    const header = document.createElement("div");
+    header.className = "proveedor-header";
+    header.addEventListener("click", () => toggleDetalle(i));
+
+    const headerInfo = document.createElement("div");
+    const nombreEl = document.createElement("div");
+    nombreEl.className = "proveedor-nombre";
+    nombreEl.textContent = escapeHtml(p.nombre);
+    const nitEl = document.createElement("div");
+    nitEl.className = "proveedor-nit";
+    nitEl.textContent = "NIT: " + escapeHtml(p.nit);
+    headerInfo.appendChild(nombreEl);
+    headerInfo.appendChild(nitEl);
+
+    const badges = document.createElement("div");
+    badges.className = "proveedor-badges";
+
+    const badgeDian = document.createElement("span");
+    badgeDian.className = "badge badge-dian";
+    badgeDian.textContent = "DIAN: " + p.total_dian;
+    const badgeSiesa = document.createElement("span");
+    badgeSiesa.className = "badge badge-siesa";
+    badgeSiesa.textContent = "SIESA: " + p.total_en_siesa;
+    const badgeEstado = document.createElement("span");
+    badgeEstado.className = "badge " + (p.total_faltantes > 0 ? 'badge-faltante' : 'badge-ok');
+    badgeEstado.textContent = p.total_faltantes > 0 ? p.total_faltantes + ' FALTANTES' : 'COMPLETO';
+
+    const chevron = document.createElement("span");
+    chevron.className = "chevron";
+    chevron.id = "chevron-" + i;
+    chevron.textContent = "\u25BC";
+
+    badges.appendChild(badgeDian);
+    badges.appendChild(badgeSiesa);
+    badges.appendChild(badgeEstado);
+    badges.appendChild(chevron);
+
+    header.appendChild(headerInfo);
+    header.appendChild(badges);
+
+    const detalle = document.createElement("div");
+    detalle.className = "proveedor-detalle";
+    detalle.id = "detalle-" + i;
+
+    if (p.faltantes.length > 0) {
+      const labelF = document.createElement("div");
+      labelF.className = "seccion-label";
+      labelF.textContent = "// FALTANTES";
+      detalle.appendChild(labelF);
+      const gridF = document.createElement("div");
+      gridF.className = "facturas-grid";
+      p.faltantes.forEach(f => {
+        const tag = document.createElement("span");
+        tag.className = "factura-tag factura-faltante";
+        const facturaText = document.createTextNode(escapeHtml(f.factura));
+        tag.appendChild(facturaText);
+        const fechaSpan = document.createElement("span");
+        fechaSpan.className = "factura-fecha";
+        fechaSpan.textContent = escapeHtml(f.fecha);
+        tag.appendChild(fechaSpan);
+        gridF.appendChild(tag);
+      });
+      detalle.appendChild(gridF);
+    }
+
+    if (p.encontradas.length > 0) {
+      const labelE = document.createElement("div");
+      labelE.className = "seccion-label";
+      labelE.textContent = "// ENCONTRADAS";
+      detalle.appendChild(labelE);
+      const gridE = document.createElement("div");
+      gridE.className = "facturas-grid";
+      p.encontradas.forEach(f => {
+        const tag = document.createElement("span");
+        tag.className = "factura-tag factura-ok";
+        tag.textContent = escapeHtml(f);
+        gridE.appendChild(tag);
+      });
+      detalle.appendChild(gridE);
+    }
+
+    card.appendChild(header);
+    card.appendChild(detalle);
     lista.appendChild(card);
   });
 }

@@ -3,6 +3,10 @@
  */
 const SPREADSHEET_ID = "1lyykmDHqr35nQ_1ZGVKqX60jdQukUNScsDMwzmWx_jM";
 
+function hashWithSalt(password, salt) {
+  return Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + password));
+}
+
 /**
  * Función principal para recibir peticiones POST
  */
@@ -53,23 +57,8 @@ function initDB() {
   if (!sheet) {
     sheet = ss.insertSheet("Usuarios");
     sheet.appendRow(headers);
-    // Insertar Usuario Predeterminado (Admin)
-    sheet.appendRow([
-      "admin_01", 
-      "Admin Sistema", 
-      "hader189@gmail.com", 
-      "PuYRxl+rpz8XbqI8EfaG91sHCYAlEQkPYcxT7HF6UjA=", 
-      "active",
-      "",
-      "",
-      "Admin",
-      "",
-      new Date(),
-      0,
-      "",
-      "",
-      ""
-    ]);
+    // Crea el primer administrador manualmente ejecutando setupAdmin() en el editor de GAS.
+    // No se inserta un admin hardcodeado aquí por seguridad.
   } else {
     // Si ya existe, nos aseguramos de que tenga todas las columnas
     const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -95,8 +84,6 @@ function handleLogin(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName("Usuarios");
   const values = sheet.getDataRange().getValues();
-  
-  const inputHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, data.pass));
 
   for (let i = 1; i < values.length; i++) {
     const dbEmail = values[i][2];
@@ -115,6 +102,7 @@ function handleLogin(data) {
       if (dbStatus === "archived") throw new Error("ESTA CUENTA HA SIDO DESACTIVADA.");
       if (dbStatus === "pending") throw new Error("CUENTA PENDIENTE DE ACTIVACIÓN. REVISA TU CORREO.");
 
+      const inputHash = hashWithSalt(data.pass, values[i][0]);
       if (dbPass === inputHash) {
         // Login Exitoso: Resetear intentos y actualizar último acceso
         sheet.getRange(i + 1, 9).setValue(new Date());
@@ -153,7 +141,7 @@ function createUser(data) {
   const rows = sheet.getDataRange().getValues();
   
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][2] === data.email) return { success: false, error: "EL EMAIL YA ESTÁ REGISTRADO" };
+    if (rows[i][2] === data.email) throw new Error("EL EMAIL YA ESTÁ REGISTRADO");
   }
 
   const userId = "user_" + Math.random().toString(36).substr(2, 5);
@@ -313,7 +301,7 @@ function setPassword(token, password) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][5] === token) {
-      const passHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password));
+      const passHash = hashWithSalt(password, data[i][0]);
       // Resetear token y activar cuenta
       sheet.getRange(i + 1, 4, 1, 4).setValues([[passHash, "active", "", ""]]);
       return true;
@@ -395,8 +383,8 @@ function changePassword(data) {
   const sheet = ss.getSheetByName("Usuarios");
   const values = sheet.getDataRange().getValues();
   
-  const oldHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, data.oldPass));
-  const newHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, data.newPass));
+  const oldHash = hashWithSalt(data.oldPass, data.id);
+  const newHash = hashWithSalt(data.newPass, data.id);
 
   for (let i = 1; i < values.length; i++) {
     if (values[i][0] === data.id) {
@@ -459,7 +447,7 @@ function resetPassword(token, newPass) {
     if (values[i][12] === token) {
       if (new Date().getTime() > values[i][13]) throw new Error("EL TOKEN HA EXPIRADO.");
       
-      const newHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, newPass));
+      const newHash = hashWithSalt(newPass, values[i][0]);
       // Actualizar pass, limpiar recovery tokens y limpiar bloqueos (intentos_fallidos y bloqueado_hasta)
       sheet.getRange(i + 1, 4).setValue(newHash);
       sheet.getRange(i + 1, 11, 1, 4).setValues([[0, "", "", ""]]);

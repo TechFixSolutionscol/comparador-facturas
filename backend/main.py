@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
@@ -6,6 +6,8 @@ import os
 import io
 import httpx
 from comparador import comparar_facturas, generar_excel_reporte
+
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 
 app = FastAPI(title="Comparador Facturas DIAN vs Siesa")
 
@@ -20,6 +22,14 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
 
+def validar_tamaño(archivo: UploadFile, nombre: str):
+    if archivo.size and archivo.size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"El archivo {nombre} excede el límite de 20MB"
+        )
+
+
 @app.get("/")
 def root():
     return {"status": "ok", "mensaje": "Comparador DIAN vs Siesa activo"}
@@ -31,6 +41,8 @@ async def comparar(
     siesa: UploadFile = File(...),
 ):
     try:
+        validar_tamaño(dian, "DIAN")
+        validar_tamaño(siesa, "Siesa")
         dian_bytes = await dian.read()
         siesa_bytes = await siesa.read()
 
@@ -56,6 +68,8 @@ async def descargar_reporte(
     siesa: UploadFile = File(...),
 ):
     try:
+        validar_tamaño(dian, "DIAN")
+        validar_tamaño(siesa, "Siesa")
         dian_bytes = await dian.read()
         siesa_bytes = await siesa.read()
 
