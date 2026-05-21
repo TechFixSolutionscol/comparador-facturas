@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
+import asyncio
 import os
 import io
 import httpx
@@ -46,7 +47,8 @@ async def comparar(
         dian_bytes = await dian.read()
         siesa_bytes = await siesa.read()
 
-        resultado = comparar_facturas(dian_bytes, siesa_bytes)
+        loop = asyncio.get_running_loop()
+        resultado = await loop.run_in_executor(None, comparar_facturas, dian_bytes, siesa_bytes)
 
         if not resultado["proveedores"]:
             raise HTTPException(status_code=400, detail="No se encontraron datos para comparar.")
@@ -73,8 +75,9 @@ async def descargar_reporte(
         dian_bytes = await dian.read()
         siesa_bytes = await siesa.read()
 
-        resultado = comparar_facturas(dian_bytes, siesa_bytes)
-        ruta_excel = generar_excel_reporte(resultado)
+        loop = asyncio.get_running_loop()
+        resultado = await loop.run_in_executor(None, comparar_facturas, dian_bytes, siesa_bytes)
+        ruta_excel = await loop.run_in_executor(None, generar_excel_reporte, resultado)
 
         return FileResponse(
             path=ruta_excel,
@@ -120,6 +123,9 @@ Genera el informe ahora:"""
                     "temperature": 0.3
                 }
             )
+            if response.status_code != 200:
+                print(f"Groq API error: {response.status_code} - {response.text[:500]}")
+                return generar_narrativa_local(resultado)
             data = response.json()
             return data["choices"][0]["message"]["content"]
     except Exception:

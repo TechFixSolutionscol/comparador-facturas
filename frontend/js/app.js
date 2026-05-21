@@ -494,11 +494,12 @@ document.getElementById("btn-comparar").addEventListener("click", async () => {
   const btn = document.getElementById("btn-comparar");
   btn.disabled = true;
   btn.innerHTML = '<div class="btn-loader"></div> PROCESANDO...';
+  setBadge("PROCESSING...", "status-processing");
   try {
     const form = new FormData();
     form.append("dian", archivoDian);
     form.append("siesa", archivoSiesa);
-    const res = await fetch(`${API_URL}/comparar`, { method:"POST", body:form });
+    const res = await fetch(`${API_URL}/comparar`, { method:"POST", body:form, signal: AbortSignal.timeout(90000) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Error desconocido");
     mostrarResultado(data);
@@ -519,11 +520,14 @@ document.getElementById("btn-descargar").addEventListener("click", async () => {
   const btn = document.getElementById("btn-descargar");
   btn.disabled = true;
   btn.innerHTML = '<div class="btn-loader"></div> GENERANDO...';
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
   try {
     const form = new FormData();
     form.append("dian", archivoDian);
     form.append("siesa", archivoSiesa);
-    const res = await fetch(`${API_URL}/descargar-reporte`, { method:"POST", body:form });
+    const res = await fetch(`${API_URL}/descargar-reporte`, { method:"POST", body:form, signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.detail || "Error desconocido al generar reporte");
@@ -533,8 +537,13 @@ document.getElementById("btn-descargar").addEventListener("click", async () => {
     const a = document.createElement("a");
     a.href = url; a.download = "reporte.xlsx"; a.click();
   } catch(err) {
-    log(`Error: ${err.message}`, 'err');
+    if (err.name === 'AbortError') {
+      log("Error: La descarga excedió el tiempo máximo de espera (120s).", 'err');
+    } else {
+      log(`Error: ${err.message}`, 'err');
+    }
   } finally {
+    clearTimeout(timeoutId);
     btn.disabled = false;
     btn.innerHTML = 'EXPORTAR EXCEL';
   }

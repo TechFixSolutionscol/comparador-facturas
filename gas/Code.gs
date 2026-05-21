@@ -78,6 +78,56 @@ function initDB() {
 }
 
 /**
+ * Crea o resetea el administrador. Ejecutar manualmente desde el editor GAS.
+ * Abre un cuadro de diálogo para ingresar la contraseña deseada.
+ */
+function setupAdmin() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName("Usuarios");
+  if (!sheet) {
+    initDB();
+    sheet = ss.getSheetByName("Usuarios");
+  }
+
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.prompt(
+    'Configurar Administrador',
+    'Ingresa la contraseña para el admin (mín. 8 caracteres, 1 mayúscula, 1 número):',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (response.getSelectedButton() !== ui.Button.OK) return;
+  const password = response.getResponseText().trim();
+  if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+    ui.alert('La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.');
+    return;
+  }
+
+  const values = sheet.getDataRange().getValues();
+  let adminRow = -1;
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][7] === "Admin" && values[i][4] === "active") {
+      adminRow = i;
+      break;
+    }
+  }
+
+  const adminId = adminRow >= 0 ? values[adminRow][0] : "admin_01";
+  const passHash = hashWithSalt(password, adminId);
+
+  if (adminRow >= 0) {
+    sheet.getRange(adminRow + 1, 4).setValue(passHash);
+    sheet.getRange(adminRow + 1, 11, 1, 2).setValues([[0, ""]]);
+    ui.alert('✅ Contraseña del administrador actualizada correctamente.');
+  } else {
+    sheet.appendRow([
+      adminId, "Admin Sistema", "hader189@gmail.com", passHash,
+      "active", "", "", "Admin", "", new Date(), 0, "", "", ""
+    ]);
+    ui.alert('✅ Administrador creado correctamente. Puedes iniciar sesión con el correo hader189@gmail.com');
+  }
+}
+
+/**
  * Maneja el login con soporte para SHA-256
  */
 function handleLogin(data) {
@@ -285,7 +335,7 @@ function doGet(e) {
                return;
             }
             document.body.innerHTML = "<div style='text-align:center; font-family:sans-serif; background:#0f1117; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:0;'><h2 style='color:#00e676'>" + successMsg + " 🎉</h2><p style='color:#8892aa; margin-bottom:24px;'>Tu contraseña ha sido configurada exitosamente.</p><p style='color:#c8d0e0; margin-bottom:16px;'>Ya puedes ingresar al sistema:</p><a href='https://comparador-facturas.vercel.app/' style='display:inline-block; padding:12px 28px; background:#00e5ff; color:#0a0e1a; text-decoration:none; border-radius:4px; font-weight:bold; letter-spacing:1px; font-size:1rem;'>IR AL SISTEMA →</a></div>";
-          })[isRecovery ? "resetPassword" : "setPassword"]("${userFound.token}", p1);
+          })[action]("${userFound.token}", p1);
         }
       </script>
     </body>`;
