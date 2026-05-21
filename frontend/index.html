@@ -245,10 +245,10 @@
       <div class="page-sub">Análisis consolidado de cierres mensuales.</div>
       
       <div class="metricas">
-        <div class="metrica"><div class="metrica-val" id="d-total-meses">—</div><div class="metrica-label">COMPARACIONES REALIZADAS</div></div>
-        <div class="metrica"><div class="metrica-val" id="d-promedio-accuracy">—</div><div class="metrica-label">PROM. PRECISIÓN</div></div>
-        <div class="metrica"><div class="metrica-val ok" id="d-total-encontradas">—</div><div class="metrica-label">TOTAL REGISTROS</div></div>
-        <div class="metrica"><div class="metrica-val danger" id="d-total-faltantes">—</div><div class="metrica-label">TOTAL FALTANTES</div></div>
+        <div class="metrica" style="border-top:3px solid var(--cyan);"><div class="metrica-val" id="d-mes-actual">—</div><div class="metrica-label">MES ACTUAL</div></div>
+        <div class="metrica" style="border-top:3px solid var(--yellow);"><div class="metrica-val" id="d-score-cierre">—</div><div class="metrica-label">SCORE DE CIERRE</div></div>
+        <div class="metrica" style="border-top:3px solid var(--accent);"><div class="metrica-val" id="d-tendencia">—</div><div class="metrica-label">TENDENCIA VS MES ANTERIOR</div></div>
+        <div class="metrica" style="border-top:3px solid var(--red);"><div class="metrica-val" id="d-criticos-count">—</div><div class="metrica-label">PROVEEDORES CRÍTICOS</div></div>
       </div>
 
       <div class="dashboard-grid">
@@ -257,6 +257,17 @@
         </div>
         <div class="chart-container">
           <canvas id="chart-accuracy"></canvas>
+        </div>
+      </div>
+
+      <div class="dashboard-grid" style="grid-template-columns: 1fr; margin-top:1rem;">
+        <div class="chart-container" style="padding:0;">
+          <div class="panel" style="margin:0;">
+            <div class="panel-header"><div class="panel-title">PROVEEDORES CRÍTICOS — MES ACTUAL</div></div>
+            <div class="panel-body" id="d-proveedores-criticos" style="min-height:60px; display:flex; flex-direction:column; gap:2px;">
+              <span style="color:var(--text-dim);">Cargando...</span>
+            </div>
+          </div>
         </div>
       </div>
 

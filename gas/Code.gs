@@ -70,8 +70,15 @@ function initDB() {
 
   if (!ss.getSheetByName("Historial")) {
     const sheetH = ss.insertSheet("Historial");
-    sheetH.appendRow(["Fecha", "Mes", "Año", "Total_DIAN", "Total_Siesa", "Total_Faltantes", "Accuracy_Pct"]);
-    sheetH.getRange(1, 1, 1, 7).setBackground("#1a1f2e").setFontColor("#00e5ff").setFontWeight("bold");
+    sheetH.appendRow(["Fecha", "Mes", "Año", "Total_DIAN", "Total_Siesa", "Total_Faltantes", "Accuracy_Pct", "Top_Proveedores"]);
+    sheetH.getRange(1, 1, 1, 8).setBackground("#1a1f2e").setFontColor("#00e5ff").setFontWeight("bold");
+  } else {
+    const sheetH = ss.getSheetByName("Historial");
+    const currentHeaders = sheetH.getRange(1, 1, 1, sheetH.getLastColumn()).getValues()[0];
+    if (currentHeaders.length < 8) {
+      sheetH.getRange(1, 8).setValue("Top_Proveedores");
+      sheetH.getRange(1, 1, 1, 8).setBackground("#1a1f2e").setFontColor("#00e5ff").setFontWeight("bold");
+    }
   }
 
   return "Base de datos actualizada correctamente";
@@ -538,7 +545,8 @@ function saveSummary(data) {
   }
 
   const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-  sheet.appendRow([now, meses[now.getMonth()], now.getFullYear(), data.total_dian, data.total_en_siesa, data.total_faltantes, data.porcentaje_completitud]);
+  const topProv = data.top_proveedores ? JSON.stringify(data.top_proveedores) : "";
+  sheet.appendRow([now, meses[now.getMonth()], now.getFullYear(), data.total_dian, data.total_en_siesa, data.total_faltantes, data.porcentaje_completitud, topProv]);
   return { success: true, message: "Resumen guardado correctamente" };
 }
 
@@ -550,7 +558,7 @@ function getHistoricalData() {
   const sheet = ss.getSheetByName("Historial");
   const values = sheet.getDataRange().getValues();
   const data = values.slice(1).map(row => ({
-    fecha: row[0], mes: row[1], anio: row[2], dian: row[3], siesa: row[4], faltantes: row[5], accuracy: row[6]
+    fecha: row[0], mes: row[1], anio: row[2], dian: row[3], siesa: row[4], faltantes: row[5], accuracy: row[6], top_proveedores: row[7] || ""
   }));
   return data.slice(-12);
 }

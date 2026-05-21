@@ -356,11 +356,14 @@ document.getElementById("btn-update-pass").addEventListener("click", async () =>
 
 /* --- COMPARADOR & HISTÓRICO --- */
 let lastSummaryData = null;
+let lastProveedoresResult = null;
 
-async function sincronizarConGAS(resumen, force = false) {
+async function sincronizarConGAS(resumen, proveedores, force = false) {
   log("Sincronizando con Google Sheets...", 'msg');
   if (force) resumen.force = true;
+  resumen.top_proveedores = proveedores;
   lastSummaryData = resumen;
+  lastProveedoresResult = proveedores;
 
   const res = await callGASRobust("saveSummary", resumen);
   
@@ -380,7 +383,7 @@ async function sincronizarConGAS(resumen, force = false) {
 document.getElementById("btn-warning-force").addEventListener("click", () => {
   document.getElementById("warning-overlay").style.display = "none";
   if (lastSummaryData) {
-    sincronizarConGAS(lastSummaryData, true);
+    sincronizarConGAS(lastSummaryData, lastProveedoresResult || [], true);
   }
 });
 
@@ -396,39 +399,99 @@ async function cargarStats() {
     const data = res.data;
     log(`Datos recibidos: ${data.length} registros encontrados.`, 'ok');
     if (!data || data.length === 0) {
-      log("No hay registros históricos suficientes para graficar.", 'warn');
-      // Limpiar metrics si no hay datos
-      document.getElementById("d-total-meses").textContent = "0";
-      document.getElementById("d-promedio-accuracy").textContent = "0%";
-      document.getElementById("d-total-encontradas").textContent = "0";
-      document.getElementById("d-total-faltantes").textContent = "0";
+      document.getElementById("d-mes-actual").textContent = "—";
+      document.getElementById("d-score-cierre").textContent = "—";
+      document.getElementById("d-tendencia").textContent = "—";
+      document.getElementById("d-proveedores-criticos").innerHTML = '<span style="color:var(--text-dim)">Sin datos</span>';
+      document.getElementById("d-criticos-count").textContent = "0";
       return;
     }
-    
-    // Limpiar y parsear datos para seguridad
-    const parsedData = data.map(d => ({
-      ...d,
-      accuracy: parseFloat(String(d.accuracy).replace('%', '')) || 0,
+
+    const raw = data.map(d => ({
+      fecha: d.fecha,
+      mes: d.mes,
+      anio: d.anio,
       dian: parseInt(d.dian) || 0,
       siesa: parseInt(d.siesa) || 0,
-      faltantes: parseInt(d.faltantes) || 0
+      faltantes: parseInt(d.faltantes) || 0,
+      accuracy: parseFloat(String(d.accuracy).replace('%', '')) || 0,
+      top_proveedores: d.top_proveedores || ""
     }));
 
-    renderCharts(parsedData);
-    
-    document.getElementById("d-total-meses").textContent = parsedData.length;
-    const avgAcc = parsedData.reduce((acc, curr) => acc + curr.accuracy, 0) / (parsedData.length || 1);
-    document.getElementById("d-promedio-accuracy").textContent = avgAcc.toFixed(1) + "%";
-    document.getElementById("d-total-encontradas").textContent = parsedData.reduce((acc, curr) => acc + curr.siesa, 0).toLocaleString();
-    document.getElementById("d-total-faltantes").textContent = parsedData.reduce((acc, curr) => acc + curr.faltantes, 0).toLocaleString();
+    // Deduplicar: por cada mes+año, conservar el registro más reciente
+    const mesesMap = new Map();
+    raw.forEach(d => {
+      const key = d.mes + "|" + d.anio;
+      const existing = mesesMap.get(key);
+      if (!existing || new Date(d.fecha) > new Date(existing.fecha)) {
+        mesesMap.set(key, d);
+      }
+    });
+    const porMes = Array.from(mesesMap.values()).sort((a, b) => {
+      if (a.anio !== b.anio) return a.anio - b.anio;
+      return ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"].indexOf(a.mes) -
+             ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"].indexOf(b.mes);
+    });
 
+    renderCharts(porMes);
+
+    // Último mes vs mes anterior
+    const ultimo = porMes[porMes.length - 1];
+    const anterior = porMes.length > 1 ? porMes[porMes.length - 2] : null;
+
+    document.getElementById("d-mes-actual").textContent = `${ultimo.mes} ${ultimo.anio}`;
+
+    // Score de cierre (semáforo)
+    const scoreEl = document.getElementById("d-score-cierre");
+    const acc = ultimo.accuracy;
+    let scoreColor, scoreText;
+    if (acc >= 98) { scoreColor = "var(--green)"; scoreText = "✅ " + acc.toFixed(1) + "%"; }
+    else if (acc >= 90) { scoreColor = "var(--yellow)"; scoreText = "⚠️ " + acc.toFixed(1) + "%"; }
+    else { scoreColor = "var(--red)"; scoreText = "🔴 " + acc.toFixed(1) + "%"; }
+    scoreEl.textContent = scoreText;
+    scoreEl.style.color = scoreColor;
+
+    // Tendencia vs mes anterior
+    const tendEl = document.getElementById("d-tendencia");
+    if (anterior) {
+      const diff = ultimo.accuracy - anterior.accuracy;
+      const signo = diff >= 0 ? "▲" : "▼";
+      const color = diff >= 0 ? "var(--green)" : "var(--red)";
+      tendEl.textContent = `${signo} ${Math.abs(diff).toFixed(1)}% vs ${anterior.mes}`;
+      tendEl.style.color = color;
+    } else {
+      tendEl.textContent = "— (primer mes)";
+      tendEl.style.color = "var(--text-dim)";
+    }
+
+    // Proveedores críticos
+    const critEl = document.getElementById("d-proveedores-criticos");
+    const critCount = document.getElementById("d-criticos-count");
+    let topProvList = [];
+    try {
+      if (ultimo.top_proveedores) topProvList = JSON.parse(ultimo.top_proveedores);
+    } catch(e) { topProvList = []; }
+    
+    if (topProvList.length > 0) {
+      critEl.innerHTML = topProvList.map(p =>
+        `<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border); font-size:0.7rem;">
+          <span style="color:var(--text);">${escapeHtml(p.nombre)}</span>
+          <span style="color:var(--red); font-weight:700;">${p.faltantes} faltas</span>
+        </div>`
+      ).join("");
+      critCount.textContent = topProvList.length + " proveedores";
+    } else {
+      critEl.innerHTML = '<span style="color:var(--green);">✅ Sin proveedores críticos</span>';
+      critCount.textContent = "0";
+    }
+
+    // Tabla histórica
     const tbody = document.getElementById("tabla-historico-body");
     tbody.innerHTML = "";
-    [...parsedData].reverse().forEach(row => {
+    [...porMes].reverse().forEach(row => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td style="padding:0.75rem;">${row.fecha ? new Date(row.fecha).toLocaleDateString() : 'N/A'}</td>
-        <td style="padding:0.75rem; color:var(--cyan);">${row.mes} ${row.anio}</td>
+        <td style="padding:0.75rem; color:var(--cyan); font-weight:600;">${row.mes} ${row.anio}</td>
         <td style="padding:0.75rem; text-align:right;">${row.dian}</td>
         <td style="padding:0.75rem; text-align:right;">${row.siesa}</td>
         <td style="padding:0.75rem; text-align:right; color:var(--red);">${row.faltantes}</td>
@@ -503,7 +566,12 @@ document.getElementById("btn-comparar").addEventListener("click", async () => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Error desconocido");
     mostrarResultado(data);
-    sincronizarConGAS(data.resumen_general);
+    const topProv = [...data.proveedores]
+      .filter(p => p.total_faltantes > 0)
+      .sort((a, b) => b.total_faltantes - a.total_faltantes)
+      .slice(0, 5)
+      .map(p => ({ nit: p.nit, nombre: p.nombre, faltantes: p.total_faltantes }));
+    sincronizarConGAS(data.resumen_general, topProv);
   } catch(err) {
     log(`Error: ${err.message}`, 'err');
   } finally {
