@@ -75,20 +75,36 @@ def leer_dian(contenido: bytes) -> pd.DataFrame:
         dtype=str
     )
 
-    # Validar columnas mínimas
-    columnas_requeridas = ["Folio", "Prefijo", "NIT Emisor", "Nombre Emisor", "Fecha Emisión", "Grupo"]
-    for col in columnas_requeridas:
-        if col not in df.columns:
-            raise ValueError(f"El archivo DIAN no tiene la columna requerida: '{col}'")
-    
+    # Normalizar nombres de columna: quitar espacios extra
+    df.columns = df.columns.str.strip()
 
-    # 2. Filtrar solo recibidas — sin tocar el valor original
-    df = df[df["Grupo"].astype(str).str.strip().str.lower() == "recibido"]
+    # Mapa flexible para encontrar columnas (case-insensitive)
+    col_lower = {c.lower(): c for c in df.columns}
+
+    # Validar columnas mínimas por nombre normalizado
+    required_lower = ["folio", "prefijo", "nit emisor", "nombre emisor", "fecha emisión", "grupo"]
+    for col in required_lower:
+        if col not in col_lower:
+            raise ValueError(f"El archivo DIAN no tiene la columna requerida: '{col}'")
+
+    # Renombrar a nombres canónicos internos
+    rename_map = {
+        col_lower["folio"]: "folio",
+        col_lower["prefijo"]: "prefijo",
+        col_lower["nit emisor"]: "nit",
+        col_lower["nombre emisor"]: "nombre",
+        col_lower["fecha emisión"]: "fecha",
+        col_lower["grupo"]: "grupo",
+    }
+    df = df.rename(columns=rename_map)
+
+    # Filtrar solo recibidas
+    df = df[df["grupo"].astype(str).str.strip().str.lower() == "recibido"]
 
     if df.empty:
         raise ValueError("No se encontraron facturas con Grupo = 'Recibido' en el archivo DIAN.")
 
-    # Filtrar solo documentos que son facturas reales (excluye acuses, nóminas, etc.)
+    # Filtrar solo documentos que son facturas reales
     TIPOS_FACTURA = [
         "Factura electrónica",
         "Nota de crédito electrónica",
@@ -97,14 +113,17 @@ def leer_dian(contenido: bytes) -> pd.DataFrame:
         "Documento equivalente POS",
         "Nota de ajuste del documento soporte",
     ]
-    
-    
 
-    if "Tipo de documento" in df.columns:
-        df = df[df["Tipo de documento"].isin(TIPOS_FACTURA)]
+    # Detectar columna de tipo de documento con lookup flexible
+    tipo_col = None
+    for lower, orig in col_lower.items():
+        if lower in ("tipo de documento", "tipo documento", "tipo_documento"):
+            tipo_col = orig
+            break
+    if tipo_col:
+        df = df[df[tipo_col].isin(TIPOS_FACTURA)]
 
-    df = df[columnas_requeridas].copy()
-    df.columns = ["folio", "prefijo", "nit", "nombre", "fecha", "grupo"]
+    df = df[["folio", "prefijo", "nit", "nombre", "fecha", "grupo"]].copy()
 
     df["nit"] = df["nit"].apply(normalizar_nit)
 
@@ -171,12 +190,12 @@ def comparar_facturas(dian_bytes: bytes, siesa_bytes: bytes) -> dict:
     df_dian = leer_dian(dian_bytes)
     df_siesa = leer_siesa(siesa_bytes)
 
-    # Índice de Siesa: (nit, clave) → True
-    # Se exige coincidencia estricta por NIT + clave para evitar falsos positivos
-    # entre proveedores distintos que compartan la misma clave normalizada.
+    # Índices de cruce estricto por NIT + clave
     siesa_index = set(zip(df_siesa["nit"], df_siesa["clave"]))
+    dian_index = set(zip(df_dian["nit"], df_dian["clave"]))
 
     proveedores = {}
+    # Cruce DIAN → Siesa (faltantes en Siesa)
     for _, row in df_dian.iterrows():
         nit = row["nit"]
         nombre = row["nombre"]
@@ -189,15 +208,14 @@ def comparar_facturas(dian_bytes: bytes, siesa_bytes: bytes) -> dict:
                 "nombre": nombre,
                 "facturas_dian": [],
                 "faltantes": [],
-                "encontradas": []
+                "encontradas": [],
+                "facturas_siesa": [],
+                "extras": []
             }
 
         proveedores[nit]["facturas_dian"].append(folio_original)
 
-        # Cruce estricto por NIT + clave (evita falsos positivos cruzando proveedores)
-        en_siesa = (nit, clave) in siesa_index
-
-        if en_siesa:
+        if (nit, clave) in siesa_index:
             proveedores[nit]["encontradas"].append(folio_original)
         else:
             proveedores[nit]["faltantes"].append({
@@ -205,7 +223,28 @@ def comparar_facturas(dian_bytes: bytes, siesa_bytes: bytes) -> dict:
                 "fecha": str(row["fecha"]) if pd.notna(row["fecha"]) else "Sin fecha"
             })
 
-             
+    # Cruce Siesa → DIAN (extras en Siesa sin respaldo en DIAN)
+    for _, row in df_siesa.iterrows():
+        nit = row["nit"]
+        nombre = row["nombre"]
+        clave = row["clave"]
+        docto_original = row["docto_original"]
+
+        if nit not in proveedores:
+            proveedores[nit] = {
+                "nit": nit,
+                "nombre": nombre,
+                "facturas_dian": [],
+                "faltantes": [],
+                "encontradas": [],
+                "facturas_siesa": [],
+                "extras": []
+            }
+
+        proveedores[nit]["facturas_siesa"].append(docto_original)
+
+        if (nit, clave) not in dian_index:
+            proveedores[nit]["extras"].append(docto_original)
 
     # Construir respuesta final
     lista_proveedores = []
@@ -216,13 +255,16 @@ def comparar_facturas(dian_bytes: bytes, siesa_bytes: bytes) -> dict:
             "total_dian": len(datos["facturas_dian"]),
             "total_en_siesa": len(datos["encontradas"]),
             "total_faltantes": len(datos["faltantes"]),
+            "total_extras": len(datos["extras"]),
             "faltantes": sorted(datos["faltantes"], key=lambda x: x["fecha"]),
-            "encontradas": sorted(datos["encontradas"])
+            "encontradas": sorted(datos["encontradas"]),
+            "extras": sorted(datos["extras"])
         })
 
     total_dian = sum(p["total_dian"] for p in lista_proveedores)
     total_siesa = sum(p["total_en_siesa"] for p in lista_proveedores)
     total_faltantes = sum(p["total_faltantes"] for p in lista_proveedores)
+    total_extras = sum(p["total_extras"] for p in lista_proveedores)
 
     return {
         "resumen_general": {
@@ -230,6 +272,7 @@ def comparar_facturas(dian_bytes: bytes, siesa_bytes: bytes) -> dict:
             "total_dian": total_dian,
             "total_en_siesa": total_siesa,
             "total_faltantes": total_faltantes,
+            "total_extras": total_extras,
             "porcentaje_completitud": round((total_siesa / total_dian * 100), 1) if total_dian > 0 else 0
         },
         "proveedores": lista_proveedores,
@@ -256,6 +299,10 @@ def generar_excel_reporte(resultado: dict) -> str:
     # ── Hoja 3: Solo faltantes ──
     ws_faltantes = wb.create_sheet("Facturas Faltantes")
     _estilo_faltantes(ws_faltantes, resultado)
+
+    # ── Hoja 4: Extras en Siesa ──
+    ws_extras = wb.create_sheet("Facturas Extra en Siesa")
+    _estilo_extras(ws_extras, resultado)
 
     ruta = os.path.join(tempfile.gettempdir(), f"reporte_comparacion_facturas_{uuid.uuid4().hex}.xlsx")
     wb.save(ruta)
@@ -291,6 +338,7 @@ def _estilo_resumen(ws, resultado):
         ("Total facturas en DIAN", r["total_dian"], "", ""),
         ("Total encontradas en Siesa", r["total_en_siesa"], "", ""),
         ("Total faltantes en Siesa", r["total_faltantes"], "", ""),
+        ("Total extras en Siesa (sin DIAN)", r.get("total_extras", 0), "", ""),
         ("Porcentaje completitud", f"{r['porcentaje_completitud']}%", "", ""),
     ]
 
@@ -414,6 +462,44 @@ def _estilo_faltantes(ws, resultado):
     if fila == 4:
         ws.merge_cells("A4:D4")
         c = ws.cell(row=4, column=1, value="✅ No hay facturas faltantes. ¡Todos los registros están completos!")
+        c.font = Font(name="Arial", size=10, bold=True, color="375623")
+        c.fill = PatternFill("solid", fgColor="E2EFDA")
+        c.alignment = Alignment(horizontal="center")
+
+
+def _estilo_extras(ws, resultado):
+    _color_header(ws, 1, 1, 4, "FACTURAS EXTRA EN SIESA (SIN RESPALDO EN DIAN)", color="CC6600")
+
+    encabezados = ["NIT", "Nombre proveedor", "Docto. proveedor", "Estado"]
+    col_widths = [16, 42, 24, 14]
+
+    fila = 3
+    for col, (enc, ancho) in enumerate(zip(encabezados, col_widths), start=1):
+        c = ws.cell(row=fila, column=col, value=enc)
+        c.font = Font(bold=True, name="Arial", size=9, color="FFFFFF")
+        c.fill = PatternFill("solid", fgColor="CC6600")
+        c.alignment = Alignment(horizontal="center")
+        c.border = _borde()
+        ws.column_dimensions[get_column_letter(col)].width = ancho
+    fila += 1
+
+    i = 0
+    for p in resultado["proveedores"]:
+        for doc in p["extras"]:
+            color_fila = "FFF2E0" if i % 2 == 0 else "FFFFFF"
+            fill = PatternFill("solid", fgColor=color_fila)
+            valores = [p["nit"], p["nombre"], doc, "Extra en Siesa"]
+            for col, val in enumerate(valores, start=1):
+                c = ws.cell(row=fila, column=col, value=val)
+                c.font = Font(name="Arial", size=9)
+                c.fill = fill
+                c.border = _borde()
+            fila += 1
+            i += 1
+
+    if fila == 4:
+        ws.merge_cells("A4:D4")
+        c = ws.cell(row=4, column=1, value="✅ No hay facturas extra en Siesa. Todos los registros tienen respaldo en DIAN.")
         c.font = Font(name="Arial", size=10, bold=True, color="375623")
         c.fill = PatternFill("solid", fgColor="E2EFDA")
         c.alignment = Alignment(horizontal="center")

@@ -53,13 +53,18 @@ def test_comparar_facturas():
     assert resumen["total_dian"] == 3
     assert resumen["total_en_siesa"] == 2
     assert resumen["total_faltantes"] == 1
+    assert resumen["total_extras"] == 1
     assert resumen["porcentaje_completitud"] == round((2 / 3) * 100, 1)
     
     proveedores = {p["nit"]: p for p in resultado["proveedores"]}
     # Prov A debe estar ok
     assert len(proveedores["900111222"]["faltantes"]) == 0
+    assert len(proveedores["900111222"]["extras"]) == 0
     # Prov B debe estar ok
     assert len(proveedores["800333444"]["faltantes"]) == 0
-    # Prov C debe tener 1 faltante (C-300)
+    assert len(proveedores["800333444"]["extras"]) == 0
+    # Prov C debe tener 1 faltante (C-300) y 1 extra (C-301)
     assert len(proveedores["700555666"]["faltantes"]) == 1
     assert proveedores["700555666"]["faltantes"][0]["factura"] == "C-300"
+    assert len(proveedores["700555666"]["extras"]) == 1
+    assert proveedores["700555666"]["extras"][0] == "C-301"

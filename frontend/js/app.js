@@ -689,6 +689,22 @@ function mostrarResultado(data) {
       detalle.appendChild(gridE);
     }
 
+    if (p.extras && p.extras.length > 0) {
+      const labelX = document.createElement("div");
+      labelX.className = "seccion-label";
+      labelX.textContent = "// EXTRAS EN SIESA (SIN DIAN)";
+      detalle.appendChild(labelX);
+      const gridX = document.createElement("div");
+      gridX.className = "facturas-grid";
+      p.extras.forEach(doc => {
+        const tag = document.createElement("span");
+        tag.className = "factura-tag factura-faltante";
+        tag.textContent = escapeHtml(doc);
+        gridX.appendChild(tag);
+      });
+      detalle.appendChild(gridX);
+    }
+
     card.appendChild(header);
     card.appendChild(detalle);
     lista.appendChild(card);

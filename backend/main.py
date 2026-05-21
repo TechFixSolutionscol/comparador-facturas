@@ -140,6 +140,7 @@ def construir_resumen_para_ia(resultado: dict) -> str:
     lineas.append(f"- Total facturas en DIAN: {r['total_dian']}")
     lineas.append(f"- Total encontradas en Siesa: {r['total_en_siesa']}")
     lineas.append(f"- Total faltantes en Siesa: {r['total_faltantes']}")
+    lineas.append(f"- Total extras en Siesa (sin DIAN): {r.get('total_extras', 0)}")
     lineas.append("")
     lineas.append("DETALLE POR PROVEEDOR:")
 
@@ -148,8 +149,11 @@ def construir_resumen_para_ia(resultado: dict) -> str:
         lineas.append(f"  - Facturas en DIAN: {p['total_dian']}")
         lineas.append(f"  - Encontradas en Siesa: {p['total_en_siesa']}")
         lineas.append(f"  - Faltantes: {p['total_faltantes']}")
+        lineas.append(f"  - Extras en Siesa: {p['total_extras']}")
         if p["faltantes"]:
             lineas.append(f"  - Facturas faltantes: {', '.join(f['factura'] for f in p['faltantes'])}")
+        if p["extras"]:
+            lineas.append(f"  - Facturas extra en Siesa: {', '.join(p['extras'])}")
 
     return "\n".join(lineas)
 
@@ -171,5 +175,15 @@ def generar_narrativa_local(resultado: dict) -> str:
                 lineas.append(f"📌 {p['nombre']} (NIT: {p['nit']})")
                 lineas.append(f"   DIAN: {p['total_dian']} facturas | Siesa: {p['total_en_siesa']} | Faltan: {p['total_faltantes']}")
                 lineas.append(f"   Facturas faltantes: {', '.join(f['factura'] for f in p['faltantes'])}")
+
+    total_extras = r.get("total_extras", 0)
+    if total_extras > 0:
+        lineas.append(f"\n⚠️ Hay {total_extras} facturas registradas en Siesa sin respaldo en DIAN:\n")
+        for p in resultado["proveedores"]:
+            if p["extras"]:
+                lineas.append(f"📌 {p['nombre']} (NIT: {p['nit']})")
+                lineas.append(f"   Facturas extra: {', '.join(p['extras'])}")
+    else:
+        lineas.append("\n✅ No se encontraron facturas en Siesa sin respaldo en DIAN.")
 
     return "\n".join(lineas)
